@@ -1,37 +1,23 @@
 #!/usr/bin/env bash
-# Web Servers Setup.
+# Sets up webservers for deployment: (Run script on both servers)
+# If not done, perform the following:
+#     installs Nginx; creates folders /data/, /data/web_static/,
+#     /data/web_static/releases/, /data/web_static/shared,
+#     /data/web_static/releases/test
+#     /data/web_static/releases/test/index.html (with some content)
+# Create symbolic link /data/web_static/current to data/web_static/releases/test
+#     delete and recreate symbolic link each time script's ran
+# Recursively assign ownership of /data/ folder to user and group 'ubuntu'
+# Update the Nginx config to serve content of /data/web_static/current/ to hbnb_static (ex: https://mydomainname.tech/hbnb_static)
+#     restart Nginx
+# curl localhost/hbnb_static/index.html should return sample text"
+
+ADD_WEBSTATIC="\\\tlocation /hbnb_static/ {\n\t\talias /data/web_static/current/;\n\t}\n"
 
 [ ! -d /etc/nginx ] && sudo apt-get update && sudo apt-get -y install nginx
-[ -d /data ] || mkdir -p /data/web_static/shared /data/web_static/releases/test/
+[ -d /data ] || sudo mkdir -p /data/web_static/releases/test /data/web_static/shared
 echo -e "<html>\n\t<head>\n\t</head>\n\t<body>\n\t\tHolberton School\n\t</body>\n</html>" | sudo tee /data/web_static/releases/test/index.html
-ln -sf /data/web_static/releases/test/ /data/web_static/current
-chown -R ubuntu:ubuntu /data
-printf %s "server {
-	listen 80;
-	listen [::]:80;
-
-	root /var/www/html;
-
-	index index.html index.htm index.nginx-debian.html;
-
-	server_name filess.tech;
-
-	location / {
-		try_files \$uri \$uri/ =404;
-	}
-
-	location /redirect_me {
-		return 301 https://www.youtube.com/watch?v=QH2-TGUlwu4\ permanent;
-	}
-
-	location /hbnb_static/ {
-		alias /data/web_static/current/;
-	}
-
-	error_page 404 /custom_404.html;
-	location = /custom_404.html {
-		root /usr/share/nginx/html;
-		internal;
-	}
-}" > /etc/nginx/sites-available/default
+sudo ln -sf /data/web_static/releases/test/ /data/web_static/current
+sudo chown -hR ubuntu:ubuntu /data/
+sudo sed -i "35i $ADD_WEBSTATIC" /etc/nginx/sites-available/default
 sudo service nginx restart
