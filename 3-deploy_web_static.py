@@ -1,90 +1,59 @@
 #!/usr/bin/python3
-'''
-    Full deployment
-'''
-from fabric.api import *
-import os
-from datetime import datetime
+"""
+Fabric script methods:
+    do_pack: packs web_static/ files into .tgz archive
+    do_deploy: deploys archive to webservers
+    deploy: do_packs && do_deploys
+Usage:
+    fab -f 3-deploy_web_static.py deploy -i my_ssh_private_key -u ubuntu
+"""
+from fabric.api import local, env, put, run
+from time import strftime
+import os.path
+env.hosts = ['35.170.76.215', '34.204.201.220']
 
-# web servers' addresses
-env.hosts = ['35.175.133.237', '44.200.171.3']
 
 def do_pack():
-    '''
-        Generate a compressed archive file
-    '''
-    dt = datetime.now().strftime("%Y%m%d%H%M%S")
-
-    # Create an archive filename by date and time
-    f_archive = 'web_static_' + dt + '.tgz'
-    directory = 'versions'
-
-    # Create directory if it doesn't exist
-    isExist = os.path.exists(directory)
-    if not isExist:
-        os.makedirs(directory)
-
-    # Process feedback
-    msg = 'Packing web_static to {}/{}'.format(directory, f_archive)
-    print(msg)
-
-    result = local(
-        "tar -cvzf {}/{} web_static".format(directory, f_archive),
-        capture=False
-    )
-
-    if result.succeeded:
-        # Archive file path
-        path = '{}/{}'.format(directory, f_archive)
-
-        # Archive file size
-        f_size = os.path.getsize(path)
-
-        # Process feedback
-        msg = 'web_static packed: {} -> {}Bytes'.format(
-            path,
-            f_size
-        )
-
-        print(msg)
-        return path
-    else:
+    """generate .tgz archive of web_static/ folder"""
+    timenow = strftime("%Y%M%d%H%M%S")
+    try:
+        local("mkdir -p versions")
+        filename = "versions/web_static_{}.tgz".format(timenow)
+        local("tar -cvzf {} web_static/".format(filename))
+        return filename
+    except:
         return None
 
+
 def do_deploy(archive_path):
-    if os.path.exists(archive_path) is False:
+    """
+    Deploy archive to web server
+    """
+    if os.path.isfile(archive_path) is False:
         return False
-
     try:
-        filename = os.path.relpath(archive_path, 'versions')
-        put(archive_path, "/tmp/{}".format(filename))
-        folder = filename.split('.')[0]
-
-        ws_path = '/data/web_static/releases/{}'.format(folder)
-
-        run("mkdir -p {}".format(ws_path))
-        run("tar -xzf /tmp/{} -C {}/".format(filename, ws_path))
+        filename = archive_path.split("/")[-1]
+        no_ext = filename.split(".")[0]
+        path_no_ext = "/data/web_static/releases/{}/".format(no_ext)
+        symlink = "/data/web_static/current"
+        put(archive_path, "/tmp/")
+        run("mkdir -p {}".format(path_no_ext))
+        run("tar -xzf /tmp/{} -C {}".format(filename, path_no_ext))
         run("rm /tmp/{}".format(filename))
-        run("mv {}/web_static/* {}/".format(ws_path))
-        run("rm -rf {}/web_static".format(ws_path))
-        run("rm -rf /data/web_static/current")
-        run("ln -s {} /data/web-static/current".format(ws_path))
+        run("mv {}web_static/* {}".format(path_no_ext, path_no_ext))
+        run("rm -rf {}web_static".format(path_no_ext))
+        run("rm -rf {}".format(symlink))
+        run("ln -s {} {}".format(path_no_ext, symlink))
 
         print("New version deployed!")
         return True
-    except Exception:
+    except:
         return False
+
 
 def deploy():
-    '''
-        Script creates and distributes an archive
-        to web servers.
-    '''
-    # Create an archive on web servers
-    path = do_pack()
-
-    if os.path.exists(path) is False:
+    archive_path = do_pack()
+    if archive_path is None:
         return False
-
-    # Distribute an archive to web servers
-    return do_deploy(path)
+    success = do_deploy(archive_path)
+    return success
