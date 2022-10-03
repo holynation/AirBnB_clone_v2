@@ -1,47 +1,26 @@
 #!/usr/bin/python3
+"""
+Fabric script generates .tgz archive of all in web_static/ using func 'do_pack'
+Usage: fab -f 1-pack_web_static.py do_pack
 
-import os
-from datetime import datetime
-from fabric.api import *
+All files in the folder web_static must be added to the final archive
+All archives must be stored in the folder 'versions' (create folder if none)
+Create archive "web_static_<year><month><day><hour><minute><second>.tgz"
+The function do_pack must return the archive path, else return None
+"""
+from fabric.api import local
+from time import strftime
 
 
 def do_pack():
-    '''
-        Script to generate a compressed archive file
-    '''
-    today = datetime.now()
-    today = today.strftime("%Y%m%d%H%M%S")
-
-    filename = 'web_static_' + today + '.tgz'
-    path = './versions'
-    isExist = os.path.exists(path)
-
-    if not isExist:
-        os.makedirs(path)
-
-    msg = 'Packing web_static to versions/{}'.format(filename)
-    print(msg)
-    result = local(
-        "tar -cvzf versions/{} web_static".format(filename),
-        capture=False
-    )
-
-    if (result.succeeded):
-        # Archive file path
-        path = '{}/{}'.format(path, filename)
-
-        # Current working directory
-        start = os.getcwd()
-
-        # Archive relative file path from working directory
-        relative_path = os.path.relpath(path, start)
-
-        # Archive file size
-        file_size = os.path.getsize(relative_path)
-
-        msg = 'web_static packed: {} -> {}Bytes'.\
-            format(relative_path, file_size)
+    """generate .tgz archive of web_static/ folder"""
+    timenow = strftime("%Y%M%d%H%M%S")
+    try:
+        local("mkdir -p versions")
+        filename = "versions/web_static_{}.tgz".format(timenow)
+        msg = 'Packing web_static to {}'.format(filename)
         print(msg)
-        return relative_path
-    else:
+        local("tar -cvzf {} web_static/".format(filename))
+        return filename
+    except:
         return None
