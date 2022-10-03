@@ -21,37 +21,34 @@ def do_deploy(archive_path):
 
     try:
         # Get the archive file through the file path
-        filename = os.path.relpath(archive_path, start)
+        filename = archive_path.split("/")[-1]
+        no_ext = filename.split(".")[0]
+        path_no_ext = "/data/web_static/releases/{}/".format(no_ext)
+        symlink = "/data/web_static/current"
 
         # Upload the archive to /tmp/ dir web server
-        put(archive_path, "/tmp/{}".format(filename))
-
-        # Cut off both the file extension and dot
-        folder = filename.split('.')[0]
+        put(archive_path, "/tmp/")
 
         # Create directory on web server
-        run("mkdir -p /data/web_static/releases/{}/".format(folder))
+        run("mkdir -p {}".format(path_no_ext))
 
         # Uncompress the archive to "folder"
-        run("tar -xzf /tmp/{} -C /data/web_static/releases/{}/".
-            format(filename, folder))
+        run("tar -xzf /tmp/{} -C {}".format(filename, path_no_ext))
 
         # Delete archive file from web server
         run("rm /tmp/{}".format(filename))
 
         # Move content of web_static to "folder"
-        run("mv /data/web_static/releases/{0}/web_static/*".format(folder) +
-            " /data/web_static/releases/{0}/".format(folder))
+        run("mv {}web_static/* {}".format(path_no_ext, path_no_ext))
 
         # Delete the content of web_static
-        run("rm -rf /data/web_static/releases/{}/web_static".format(folder))
+        run("rm -rf {}web_static".format(path_no_ext))
 
         # Delete symbolic link current on web server
-        run("rm -rf /data/web_static/current")
+        run("rm -rf {}".format(symlink))
 
         # Create new link: current and point to new version of code in "folder"
-        run("ln -s /data/web_static/releases/{}".format(folder) +
-            " /data/web_static/current")
+        run("ln -s {} {}".format(path_no_ext, symlink))
 
         print("New version deployed!")
         return True
