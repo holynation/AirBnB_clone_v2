@@ -9,7 +9,6 @@ from models.base_model import Base
 from models.city import City
 from models.state import State
 from models.user import User
-#from models.place import Place
 from models.review import Review
 from models.amenity import Amenity
 
@@ -102,7 +101,11 @@ class DBStorage:
         self.__session.close()
 
     def delete(self, obj=None):
-        pass
+        '''
+            Delete from current database session
+        '''
+        if obj is not None:
+            self.__session.delete(obj)
 
     def reload(self):
         # Create all required and neccessary tables
