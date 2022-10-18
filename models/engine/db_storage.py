@@ -71,7 +71,7 @@ class DBStorage:
                 key = type(obj).__name__ + '.' + obj.id
                 collection[key] = obj
 
-            return collections
+            return collection
 
         else:
             # Supported classes/tables for Airbnb app

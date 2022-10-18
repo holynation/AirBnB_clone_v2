@@ -9,43 +9,40 @@ class FileStorage:
     __objects = {}
 
     def all(self, cls=None):
-        """
-            Returns only list of instances currently in storage
-            that match the value of given parameter cls
+        '''
+            Return the dictionary
+        '''
+        new_dict = {}
+        if cls is None:
+            return self.__objects
 
-            Args:
-                cls (Model): Input for a specific class value (optional)
-
-            Attributes:
-                cls (Model): support class
-
-            Returns:
-                dict
-        """
-        collections = {}
-
-        if cls is not None:
-            for (key, value) in FileStorage.__objects.items():
-                if isinstance(value, cls):
-                    collections[key] = value
-            return collections
-        return FileStorage.__objects
+        if cls != "":
+            for k, v in self.__objects.items():
+                if cls == k.split(".")[0]:
+                    new_dict[k] = v
+            return new_dict
+        else:
+            return self.__objects
 
     def new(self, obj):
         """Adds new object to storage dictionary"""
-        self.all().update({obj.to_dict()['__class__'] + '.' + obj.id: obj})
+        key = str(obj.__class__.__name__) + "." + str(obj.id)
+        value_dict = obj
+        FileStorage.__objects[key] = value_dict
 
     def save(self):
         """Saves storage dictionary to file"""
-        with open(FileStorage.__file_path, 'w') as f:
-            temp = {}
-            temp.update(FileStorage.__objects)
-            for key, val in temp.items():
-                temp[key] = val.to_dict()
-            json.dump(temp, f)
+        objects_dict = {}
+        for key, val in FileStorage.__objects.items():
+            objects_dict[key] = val.to_dict()
+
+        with open(FileStorage.__file_path, mode='w', encoding="UTF8") as fd:
+            json.dump(objects_dict, fd)
 
     def reload(self):
-        """Loads storage dictionary from file"""
+        '''
+            Deserializes the JSON file to __objects.
+        '''
         from models.base_model import BaseModel
         from models.user import User
         from models.place import Place
@@ -59,14 +56,15 @@ class FileStorage:
                     'State': State, 'City': City, 'Amenity': Amenity,
                     'Review': Review
                   }
+
         try:
-            temp = {}
-            with open(FileStorage.__file_path, 'r') as f:
-                temp = json.load(f)
-                for key, val in temp.items():
-                    self.all()[key] = classes[val['__class__']](**val)
-        except Exception as err:
-            # print("Error: ", err)
+            with open(FileStorage.__file_path, encoding="UTF8") as fd:
+                FileStorage.__objects = json.load(fd)
+            for key, val in FileStorage.__objects.items():
+                class_name = val["__class__"]
+                class_name = classes[class_name]
+                FileStorage.__objects[key] = class_name(**val)
+        except FileNotFoundError:
             pass
 
     def delete(self, obj=None):
@@ -84,10 +82,9 @@ class FileStorage:
                 None
         """
         if obj is not None:
-            for (key, value) in FileStorage.__objects.items():
-                if value is obj:
-                    del (FileStorage.__objects[key])
-                    break
+            key = str(obj.__class__.__name__) + "." + str(obj.id)
+            FileStorage.__objects.pop(key, None)
+            self.save()
 
     def close(self):
         '''
