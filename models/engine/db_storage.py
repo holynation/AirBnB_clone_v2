@@ -78,17 +78,10 @@ class DBStorage:
         '''
             Commit all changes of current database session
         '''
-        try:
-            self.__session = Base.metadata.create_all(self.__engine)
-            factory = sessionmaker(bind=self.__engine, expire_on_commit=False)
-            Session = scoped_session(factory)
-            self.__session = Session()
-        except exc.OperationalError as err:
-            msg = "Operation error: cant't connect. Ensure database server\
- is start and running."
-            print("{}".format(msg))
-        except Exception as err:
-            print("Error: {}".format(type(err)))
+        self.__session = Base.metadata.create_all(self.__engine)
+        factory = sessionmaker(bind=self.__engine, expire_on_commit=False)
+        Session = scoped_session(factory)
+        self.__session = Session()
 
     def close(self):
         '''
