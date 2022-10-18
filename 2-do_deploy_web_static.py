@@ -1,13 +1,13 @@
 #!/usr/bin/python3
 '''
     Script distributes an archive to
-    web servers through automation
+    web servers through automation to both servers
 '''
 from fabric.api import *
 import os
 
 # Servers's addresses
-env.hosts = ['35.170.76.215', '34.204.201.220']
+env.hosts = ['34.204.201.220', '3.235.244.129']
 
 
 def do_deploy(archive_path):
@@ -18,6 +18,7 @@ def do_deploy(archive_path):
         return False
 
     start = 'versions'
+    print("Starting deployment")
 
     try:
         # Get the archive file through the file path
@@ -26,9 +27,11 @@ def do_deploy(archive_path):
         path_no_ext = "/data/web_static/releases/{}/".format(no_ext)
         symlink = "/data/web_static/current"
 
+        print("Uploading to /tmp/{}".format(filename))
         # Upload the archive to /tmp/ dir web server
-        put(archive_path, "/tmp/")
+        put(archive_path, "/tmp/{}".format(filename))
 
+        print("Creating directory {}".format(path_no_ext))
         # Create directory on web server
         run("mkdir -p {}".format(path_no_ext))
 

@@ -122,3 +122,9 @@ class DBStorage:
             print("{}".format(msg))
         except Exception as err:
             print("Error: {}".format(type(err)))
+
+    def close(self):
+        '''
+            Remove private session attribute
+        '''
+        self.__session.close()
