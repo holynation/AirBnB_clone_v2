@@ -1,104 +1,71 @@
 #!/usr/bin/python3
 '''
-    Abstracted data storage
+    Define class DatabaseStorage
 '''
-import os
-from sqlalchemy import create_engine, exc
+from os import getenv
+from sqlalchemy import create_engine, MetaData, exc
 from sqlalchemy.orm import sessionmaker, scoped_session
-from models.base_model import Base
-from models.city import City
+import models
 from models.state import State
-from models.user import User
-from models.review import Review
-from models.amenity import Amenity
+from models.city import City
+from models.base_model import Base
 
 
 class DBStorage:
-    """
-        DBStroge abstract storage's engine for AirBnB program
-
-    """
+    '''
+        Create SQLalchemy database
+    '''
     __engine = None
     __session = None
 
     def __init__(self):
         '''
-            Set the attributes of instantiate obj
-
-            Args:
-                No requirement arguemnt
-
-            Attribures:
-                No passed in value
-
-            Return:
-                None
+            Create engine and link to MySQL databse (hbnb_dev, hbnb_dev_db)
         '''
-        username = os.getenv("HBNB_MYSQL_USER")
-        passwd = os.getenv("HBNB_MYSQL_PWD")
-        host = os.getenv("HBNB_MYSQL_HOST")
-        database = os.getenv("HBNB_MYSQL_DB")
-
-        # Database connection url
-        connect_url = 'mysql+mysqldb://{}:{}@{}:3306/{}'.\
-            format(username, passwd, host, database)
-
-        # Create lazy database connection
-        self.__engine = create_engine(connect_url, pool_pre_ping=True)
-
-        if os.getenv("HBNB_ENV") == 'test':
+        user = getenv("HBNB_MYSQL_USER")
+        pwd = getenv("HBNB_MYSQL_PWD")
+        host = getenv("HBNB_MYSQL_HOST")
+        db = getenv("HBNB_MYSQL_DB")
+        envv = getenv("HBNB_ENV", "none")
+        self.__engine = create_engine('mysql+mysqldb://{}:{}@{}/{}'.format(
+            user, pwd, host, db), pool_pre_ping=True)
+        if envv == 'test':
             Base.metadata.drop_all(self.__engine)
 
     def all(self, cls=None):
         '''
-            Fetch all stored data in storage
-
-            Args:
-                cls (class type): Filter key for stored data to retrieve
-
-            Attributes:
-                cls (key): Filter value
-
-            Returns:
-                collection of all classes or filtered obj
+            Query current database session
         '''
-        collection = {}
+        db_dict = {}
 
-        if cls is not None:
-            queryset = self.__session.query(cls).all()
-            for obj in queryset:
-                key = type(obj).__name__ + '.' + obj.id
-                collection[key] = obj
-
-            return collection
-
+        if cls != "":
+            objs = self.__session.query(models.classes[cls]).all()
+            for obj in objs:
+                key = "{}.{}".format(obj.__class__.__name__, obj.id)
+                db_dict[key] = obj
+            return db_dict
         else:
-            # Supported classes/tables for Airbnb app
-            classes = [
-                City,
-                State,
-                User,
-                Review,
-                Amenity
-            ]
-            tmp = []
-
-            for cls in classes:
-                queryset = self.__session.query(cls).all()
-                tmp.extend(queryset)
-
-            for obj in tmp:
-                key = type(obj).__name__ + '.' + obj.id
-                collection[key] = obj
-            return collection
+            for k, v in models.classes.items():
+                if k != "BaseModel":
+                    objs = self.__session.query(v).all()
+                    if len(objs) > 0:
+                        for obj in objs:
+                            key = "{}.{}".format(obj.__class__.__name__,
+                                                 obj.id)
+                            db_dict[key] = obj
+            return db_dict
 
     def new(self, obj):
+        '''
+            Add object to current database session
+        '''
         self.__session.add(obj)
-        self.save()
 
     def save(self):
+        '''
+            Commit all changes of current database session
+        '''
         self.__session.commit()
-        self.__session.close()
 
     def delete(self, obj=None):
         '''
@@ -108,16 +75,13 @@ class DBStorage:
             self.__session.delete(obj)
 
     def reload(self):
-        # Create all required and neccessary tables
+        '''
+            Commit all changes of current database session
+        '''
         try:
-            Base.metadata.create_all(self.__engine)
-
-            # Establish connection for transaction
-            session_factory = sessionmaker(
-                bind=self.__engine,
-                expire_on_commit=False
-            )
-            Session = scoped_session(session_factory)
+            self.__session = Base.metadata.create_all(self.__engine)
+            factory = sessionmaker(bind=self.__engine, expire_on_commit=False)
+            Session = scoped_session(factory)
             self.__session = Session()
         except exc.OperationalError as err:
             msg = "Operation error: cant't connect. Ensure database server\
