@@ -8,7 +8,11 @@ import models
 
 
 class State(BaseModel, Base):
-    """ State class """
+    '''
+        Implementation for the State.
+        Create relationship between class State (parent) to City (child)
+    '''
+    __tablename__ = "states"
 
     if getenv("HBNB_TYPE_STORAGE") == "db":
         name = Column(String(128), nullable=False)
